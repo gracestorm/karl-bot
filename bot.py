@@ -3,6 +3,7 @@ import json
 import os
 import io
 import threading
+import time
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import httpx
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
@@ -10,9 +11,9 @@ from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, Cal
 
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 MODELHUB_API_KEY = os.getenv("MODELHUB_API_KEY")
-
 API_URL = os.getenv("API_URL", "https://modelhub.my/v1")
-KARL_SYSTEM_PROMPT = "Вы - доктор Карл Вандерлик, медицинский доктор и доктор философии, клинический психотерапевт, специалист по Комплексному ПТСР и травме. Ваш тон строгий, глубокий, аналитический, но бережный. Всегда обращайтесь на вы. Используйте жирный шрифт для ключевых понятий и мягкие эмодзи. Избегайте решеток для заголовков. Отвечайте глубоко, но понятно, задавая не больше 1-2 мягких вопросов в конце."
+
+KARL_SYSTEM_PROMPT = """Вы - доктор Карл Вандерлик, медицинский доктор и доктор философии, клинический психотерапевт, специалист по Комплексному ПТСР и травме. Ваш тон строгий, глубокий, аналитический, но бережный. Всегда обращайтесь на вы. Используйте жирный шрифт для ключевых понятий и мягкие эмодзи. Избегайте решеток для заголовков. Отвечайте глубоко, но понятно, задавая не больше 1-2 мягких вопросов в конце."""
 
 SESSIONS_FILE = "sessions.json"
 MODEL_NAME = "claude-sonnet-4-6"
@@ -195,7 +196,8 @@ async def handle_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(ifs_text, parse_mode="Markdown", reply_markup=MAIN_MENU)
         return
     elif "SOS" in text:
-        await update.message.reply_text("🛡️ *Протокол заземления:*\n\n1. Опора под стопами\n2. Найдите 3 синих предмета\n3. Сделайте удлиненный выдох\n4. Назовите 5 вещей вокруг\n\n*Дыхание:* 4-4-6 (вдох-задержка-выдох)", reply_markup=MAIN_MENU, parse_mode="Markdown")
+        sos_text = "🛡️ *Протокол заземления:*\n\n1. Опора под стопами\n2. Найдите 3 синих предмета\n3. Сделайте удлиненный выдох\n4. Назовите 5 вещей вокруг\n\n*Дыхание:* 4-4-6 (вдох-задержка-выдох)"
+        await update.message.reply_text(sos_text, reply_markup=MAIN_MENU, parse_mode="Markdown")
         return
     elif "Сбросить" in text:
         user_message_buffers.pop(user_id, None)
@@ -243,17 +245,22 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.message.reply_text("Нечего откатывать.", reply_markup=MAIN_MENU)
 
 def main():
+    # Останавливаем все предыдущие экземпляры
+    time.sleep(3)  # Даем время на завершение старых процессов
+
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
-    app = ApplicationBuilder().token(TELEGRAM_TOKEN).read_timeout(60).connect_timeout(60).build()
+    app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("export", export_chat))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_messages))
     app.add_handler(CallbackQueryHandler(handle_callback))
-    
+
     print("Доктор Карл запущен в стабильном режиме!")
-    app.run_polling(drop_pending_updates=True)
+
+    # Используем drop_pending_updates=True чтобы игнорировать старые обновления
+    app.run_polling(drop_pending_updates=True, allowed_updates=["message", "callback_query"])
 
 class SimpleHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -262,7 +269,6 @@ class SimpleHandler(BaseHTTPRequestHandler):
         self.wfile.write(b"I am alive!")
 
 def run_web_server():
-    # Используем порт из переменной окружения PORT (Render)
     port = int(os.getenv("PORT", 10000))
     server = HTTPServer(('0.0.0.0', port), SimpleHandler)
     server.serve_forever()
