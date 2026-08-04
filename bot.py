@@ -33,6 +33,7 @@ When the user accesses the literature section or asks for books, do NOT ask clar
 4. Деб Дана — «Поливагальная теория в терапии» (Понятный путеводитель по нервной системе, безопасности, активации и замиранию).
 After presenting this list, invite the user to pick a specific focus or request a tailored recommendation based on their current symptom."""
 SESSIONS_FILE = "sessions.json"
+MODEL_NAME = "claude-sonnet-4-6"
 
 def load_sessions():
     if os.path.exists(SESSIONS_FILE):
