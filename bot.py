@@ -186,8 +186,16 @@ async def handle_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
         save_sessions()
         await update.message.reply_text(lit_text, parse_mode="Markdown", reply_markup=MAIN_MENU)
         return
+    elif "Теория" in text:
+        theory_text = "🧠 *Комплексное ПТСР (КПТСР)*\n\nКПТСР развивается при длительной травме. Основные признаки:\n\n• Трудности с регуляцией эмоций\n• Негативное восприятие себя\n• Проблемы в отношениях\n• Соматические симптомы\n\n*Подходы к терапии:*\n• IFS (Внутренние семейные системы)\n• EMDR\n• Соматическое переживание\n• Психотерапия, ориентированная на травму"
+        await update.message.reply_text(theory_text, parse_mode="Markdown", reply_markup=MAIN_MENU)
+        return
+    elif "Самопомощь" in text:
+        ifs_text = "🧩 *IFS - Внутренние семейные системы*\n\nОсновные части:\n\n• *Изгнанники* - уязвимые части, несущие боль\n• *Менеджеры* - защитники, контролирующие\n• *Пожарные* - реагируют на триггеры\n\n*Практика:*\n1. Заметь часть, которая сейчас активна\n2. Спроси: \"Что ты чувствуешь?\"\n3. Спроси: \"Что тебе нужно?\"\n4. Поблагодари за защиту"
+        await update.message.reply_text(ifs_text, parse_mode="Markdown", reply_markup=MAIN_MENU)
+        return
     elif "SOS" in text:
-        await update.message.reply_text("🛡️ Протокол заземления:\n1. Опора под стопами.\n2. Найдите 3 синих предмета.\n3. Сделайте удлиненный выдох.", reply_markup=MAIN_MENU, parse_mode="Markdown")
+        await update.message.reply_text("🛡️ *Протокол заземления:*\n\n1. Опора под стопами\n2. Найдите 3 синих предмета\n3. Сделайте удлиненный выдох\n4. Назовите 5 вещей вокруг\n\n*Дыхание:* 4-4-6 (вдох-задержка-выдох)", reply_markup=MAIN_MENU, parse_mode="Markdown")
         return
     elif "Сбросить" in text:
         user_message_buffers.pop(user_id, None)
@@ -254,7 +262,9 @@ class SimpleHandler(BaseHTTPRequestHandler):
         self.wfile.write(b"I am alive!")
 
 def run_web_server():
-    server = HTTPServer(('0.0.0.0', 10000), SimpleHandler)
+    # Используем порт из переменной окружения PORT (Render)
+    port = int(os.getenv("PORT", 10000))
+    server = HTTPServer(('0.0.0.0', port), SimpleHandler)
     server.serve_forever()
 
 if __name__ == '__main__':
