@@ -38,7 +38,7 @@ MODEL_NAME = "claude-sonnet-4-6"
 
 def load_sessions():
     if os.path.exists(SESSIONS_FILE):
-        try:Y
+        try:
             with open(SESSIONS_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 return {int(k): v for k, v in data.items()}
