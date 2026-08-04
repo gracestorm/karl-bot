@@ -248,4 +248,20 @@ def main():
     app.run_polling()
 
 if __name__ == "__main__":
-    main()
+    main) import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
+
+class SimpleHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"I am alive!")
+
+def run_web_server():
+    server = HTTPServer(('0.0.0.0', 10000), SimpleHandler)
+    server.serve_forever()
+
+if __name__ == '__main__':
+    # Запускаем веб-сервер в фоновом потоке, чтобы он занимал порт для Render
+    web_thread = threading.Thread(target=run_web_server, daemon=True)
+    web_thread.start)
