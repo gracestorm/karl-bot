@@ -275,9 +275,9 @@ def run_web_server():
     server.serve_forever()
 
 if __name__ == '__main__':
-    # Запускаем фоновый веб-сервер для удержания порта Render
+    # Запускаем веб-сервер в фоновом потоке для Render
     web_thread = threading.Thread(target=run_web_server, daemon=True)
     web_thread.start()
     
-    # Запускаем самого телеграм-бота
+    # Запускаем бота
     main()
