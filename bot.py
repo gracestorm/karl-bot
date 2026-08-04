@@ -15,7 +15,7 @@ MODEL_NAME = "claude-sonnet-4-6"
 API_URL = "https://modelhub.my/v1/chat/completions"
 SESSIONS_FILE = "sessions.json"
 
-SYSTEM_PROMPT = """You are Dr. Karl Wunderlich, M.D., Ph.D., a clinical psychotherapist specializing in Complex PTSD, trauma, and dissociation. 
+KARL_SYSTEM_PROMPT = """You are Dr. Karl Wunderlich, M.D., Ph.D., a clinical psychotherapist specializing in Complex PTSD, trauma, and dissociation. 
 
 CRITICAL STYLE GUIDELINES:
 1. NEVER speak like a generic AI assistant or chatbot. Strip away all polite corporate filler, hollow empathy clichés, and overly diplomatic formatting.
@@ -196,6 +196,22 @@ async def handle_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if text == "📁 Экспорт сеанса":
         await export_chat(update, context)
         return
+    elif text == "Литература":
+        lit_text = (
+            "📚 **Рекомендуемая литература по работе с травмой и КПТ:**\n\n"
+            "1. **Бессел ван дер Колк — «Тело помнит всё»** — как травма имплантируется в соматическую систему и как запустить исцеление через тело.\n"
+            "2. **Пит Уокер — «Комплексное ПТСР: Руководство по выздоровлению»** — фундаментальная работа с внутренним критиком, эмоциональными флешбэками и токсичным стыдом.\n"
+            "3. **Ричард Шварц — «Нет плохих частей»** — мягкое введение в IFS — работу с субличностями и защитными частями психики.\n"
+            "4. **Деб Дана — «Поливагальная теория в терапии»** — понятный путеводитель по нервной системе, безопасности, активации и замиранию.\n\n"
+            "Какая из этих тем отзывается вам больше всего? Напишите, и мы разберем её точечно."
+        )
+        if user_id not in user_sessions:
+            user_sessions[user_id] = []
+        user_sessions[user_id].append({"role": "user", "content": "Литература"})
+        user_sessions[user_id].append({"role": "assistant", "content": lit_text})
+        save_sessions()
+        await update.message.reply_text(lit_text, parse_mode="Markdown", reply_markup=MAIN_MENU)
+        return
     elif "SOS" in text:
         await update.message.reply_text("Протокол флэшбека:\n1. Заземлитесь (стопы на пол).\n2. Найдите 3 синих предмета.\n3. Удлинённый выдох.", reply_markup=MAIN_MENU)
         return
@@ -260,10 +276,6 @@ def main():
     print("Доктор Карл запущен в стабильном режиме!")
     app.run_polling()
 
-if __name__ == "__main__":
-    main) import threading
-from http.server import HTTPServer, BaseHTTPRequestHandler
-
 class SimpleHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
@@ -275,9 +287,6 @@ def run_web_server():
     server.serve_forever()
 
 if __name__ == '__main__':
-    # Запускаем веб-сервер в фоновом потоке для Render
     web_thread = threading.Thread(target=run_web_server, daemon=True)
     web_thread.start()
-    
-    # Запускаем бота
     main()
