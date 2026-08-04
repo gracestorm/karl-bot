@@ -38,7 +38,7 @@ MODEL_NAME = "claude-sonnet-4-6"
 
 def load_sessions():
     if os.path.exists(SESSIONS_FILE):
-        try:
+        try:Y
             with open(SESSIONS_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
                 return {int(k): v for k, v in data.items()}
@@ -274,7 +274,7 @@ def main():
     app.add_handler(CallbackQueryHandler(handle_callback))
     
     print("Доктор Карл запущен в стабильном режиме!")
-    app.run_polling()
+    app.run_polling(drop_pending_updates=True)
 
 class SimpleHandler(BaseHTTPRequestHandler):
     def do_GET(self):
