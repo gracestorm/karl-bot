@@ -280,7 +280,58 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.message.reply_text("↩️ Последний обмен отменен.", reply_markup=MAIN_MENU)
         else:
             await query.message.reply_text("Нечего откатывать.", reply_markup=MAIN_MENU)
-
+async def test_api(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Тестирует подключение к ModelHub API"""
+    if not MODELHUB_API_KEY:
+        await update.message.reply_text("❌ MODELHUB_API_KEY не задан в переменных окружения!")
+        return
+    
+    if not TELEGRAM_TOKEN:
+        await update.message.reply_text("❌ TELEGRAM_TOKEN не задан!")
+        return
+    
+    status_msg = await update.message.reply_text("🔍 Проверяю подключение к ModelHub...")
+    
+    try:
+        headers = {
+            "Authorization": f"Bearer {MODELHUB_API_KEY}",
+            "Content-Type": "application/json"
+        }
+        
+        # Простой тестовый запрос
+        test_payload = {
+            "model": MODEL_NAME,
+            "messages": [{"role": "user", "content": "Say just 'Hello, API works!'"}],
+            "max_tokens": 20,
+            "temperature": 0.1
+        }
+        
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(API_URL, json=test_payload, headers=headers)
+        
+        if response.status_code == 200:
+            try:
+                data = response.json()
+                reply = data.get("choices", [{}])[0].get("message", {}).get("content", "Нет ответа")
+                await status_msg.edit_text(
+                    f"✅ API работает!\n\n"
+                    f"Модель: {MODEL_NAME}\n"
+                    f"URL: {API_URL}\n"
+                    f"Ответ: {reply}"
+                )
+            except Exception as e:
+                await status_msg.edit_text(f"❌ Ошибка парсинга JSON: {str(e)}\n\nОтвет API: {response.text[:200]}")
+        else:
+            await status_msg.edit_text(
+                f"❌ Ошибка API ({response.status_code})\n\n"
+                f"URL: {API_URL}\n"
+                f"Модель: {MODEL_NAME}\n"
+                f"Ответ: {response.text[:300]}"
+            )
+    except httpx.TimeoutException:
+        await status_msg.edit_text(f"⏰ Таймаут подключения к {API_URL}")
+    except Exception as e:
+        await status_msg.edit_text(f"❌ Ошибка: {str(e)[:300]}")
 def main():
     # Останавливаем все предыдущие экземпляры
     time.sleep(3)
@@ -316,3 +367,20 @@ if __name__ == '__main__':
     web_thread = threading.Thread(target=run_web_server, daemon=True)
     web_thread.start()
     main()
+app.add_handler(CommandHandler("test", test_api))
+def main():
+    # Останавливаем все предыдущие экземпляры
+    time.sleep(3)
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("export", export_chat))
+    app.add_handler(CommandHandler("test", test_api))  # <-- ДОБАВЬ ЭТУ СТРОКУ
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_messages))
+    app.add_handler(CallbackQueryHandler(handle_callback))
+
+    print("Доктор Карл запущен в стабильном режиме!")
+    app.run_polling(drop_pending_updates=True, allowed_updates=["message", "callback_query"])
