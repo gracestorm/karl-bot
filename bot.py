@@ -118,6 +118,15 @@ async def generate_response(user_id, update_or_query, is_callback=False):
             await update_or_query.reply_text(msg)
         return
 
+    # Проверяем наличие API ключа
+    if not MODELHUB_API_KEY:
+        error_msg = "❌ API ключ не настроен. Пожалуйста, добавьте MODELHUB_API_KEY в переменные окружения."
+        if is_callback:
+            await update_or_query.message.reply_text(error_msg)
+        else:
+            await update_or_query.reply_text(error_msg)
+        return
+
     headers = {
         "Authorization": f"Bearer {MODELHUB_API_KEY}",
         "Content-Type": "application/json"
@@ -133,43 +142,71 @@ async def generate_response(user_id, update_or_query, is_callback=False):
 
     try:
         async def fetch():
-            async with httpx.AsyncClient(timeout=120.0) as client:
-                return await client.post(API_URL, json=payload, headers=headers)
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                response = await client.post(API_URL, json=payload, headers=headers)
+                return response
 
         response = None
         for attempt in range(3):
             try:
                 response = await fetch()
                 break
-            except (httpx.TimeoutException, httpx.NetworkError):
+            except (httpx.TimeoutException, httpx.NetworkError) as e:
+                print(f"Попытка {attempt+1} не удалась: {e}")
                 if attempt == 2:
                     raise
                 await asyncio.sleep(2)
 
-        data = response.json()
-        if response.status_code == 200:
-            reply = data["choices"][0]["message"]["content"]
+        # Проверяем статус ответа
+        if response.status_code != 200:
+            error_text = f"❌ API вернул ошибку {response.status_code}\n"
+            try:
+                data = response.json()
+                if "error" in data:
+                    error_text += f"Сообщение: {data['error'].get('message', 'Неизвестная ошибка')}"
+            except:
+                error_text += f"Ответ: {response.text[:200]}"
             
-            if is_callback and user_sessions[user_id] and user_sessions[user_id][-1]["role"] == "assistant":
-                user_sessions[user_id][-1]["content"] = reply
-            else:
-                user_sessions[user_id].append({"role": "assistant", "content": reply})
+            await status_msg.edit_text(error_text)
+            return
 
-            save_sessions()
+        # Парсим JSON
+        try:
+            data = response.json()
+        except json.JSONDecodeError as e:
+            print(f"Ошибка парсинга JSON: {e}")
+            print(f"Ответ API: {response.text[:500]}")
+            await status_msg.edit_text(
+                "❌ API вернул некорректный ответ. Проверьте настройки MODELHUB_API_KEY и API_URL.\n\n"
+                f"Получено: {response.text[:200]}"
+            )
+            return
 
-            keyboard = InlineKeyboardMarkup([
-                [
-                    InlineKeyboardButton("🔄 Перегенерировать", callback_data="regen"),
-                    InlineKeyboardButton("⬅️ Откатить шаг", callback_data="undo")
-                ]
-            ])
-            
-            await send_long_message(status_msg, reply, reply_markup=keyboard, parse_mode="Markdown")
+        reply = data.get("choices", [{}])[0].get("message", {}).get("content", "Нет ответа от модели")
+        
+        if is_callback and user_sessions[user_id] and user_sessions[user_id][-1]["role"] == "assistant":
+            user_sessions[user_id][-1]["content"] = reply
         else:
-            err = data.get("error", {}).get("message", "Ошибка API")
-            await status_msg.edit_text(f"API Error ({response.status_code}): {err}")
+            user_sessions[user_id].append({"role": "assistant", "content": reply})
+
+        save_sessions()
+
+        keyboard = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton("🔄 Перегенерировать", callback_data="regen"),
+                InlineKeyboardButton("⬅️ Откатить шаг", callback_data="undo")
+            ]
+        ])
+        
+        await send_long_message(status_msg, reply, reply_markup=keyboard, parse_mode="Markdown")
+        
+    except httpx.TimeoutException:
+        await status_msg.edit_text("⏰ Превышено время ожидания ответа от API. Попробуйте позже.")
+    except httpx.NetworkError as e:
+        await status_msg.edit_text(f"🌐 Ошибка сети: {str(e)[:100]}")
     except Exception as e:
-        await status_msg.edit_text(f"Ошибка сети/таймаут: {e}")
+        print(f"Неизвестная ошибка: {e}")
+        await status_msg.edit_text(f"❌ Ошибка: {str(e)[:200]}")
 
 async def handle_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = update.message.text
@@ -246,7 +283,7 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     # Останавливаем все предыдущие экземпляры
-    time.sleep(3)  # Даем время на завершение старых процессов
+    time.sleep(3)
 
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
@@ -258,8 +295,6 @@ def main():
     app.add_handler(CallbackQueryHandler(handle_callback))
 
     print("Доктор Карл запущен в стабильном режиме!")
-
-    # Используем drop_pending_updates=True чтобы игнорировать старые обновления
     app.run_polling(drop_pending_updates=True, allowed_updates=["message", "callback_query"])
 
 class SimpleHandler(BaseHTTPRequestHandler):
@@ -267,6 +302,10 @@ class SimpleHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.end_headers()
         self.wfile.write(b"I am alive!")
+    
+    def do_HEAD(self):
+        self.send_response(200)
+        self.end_headers()
 
 def run_web_server():
     port = int(os.getenv("PORT", 10000))
