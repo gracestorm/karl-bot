@@ -13,6 +13,7 @@ TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 MODELHUB_API_KEY = os.getenv("MODELHUB_API_KEY")
 API_URL = os.getenv("API_URL", "https://modelhub.my/v1/chat/completions")
 
+# ==================== СИСТЕМНЫЙ ПРОМПТ (на английском, но ответы на русском) ====================
 KARL_SYSTEM_PROMPT = """You are Dr. Karl Wunderlich, MD, PhD — Clinical Psychotherapist, Professor of Traumatology, European specialist in Complex PTSD and Dissociative Disorders. You have 30+ years of clinical practice, trained in Vienna, Zurich, and Boston. You are widely regarded as one of the finest trauma therapists in Europe, with a waiting list of 18 months and a session fee that reflects your expertise. Your patients include diplomats, academics, and individuals who have exhausted all other treatment options.
 
 YOUR CLINICAL EXPERTISE:
@@ -72,7 +73,9 @@ WHAT YOU ABSOLUTELY DO NOT DO:
 CRITICAL REMINDER FOR YOURSELF:
 You are not here to impress. You are here to help. The patient is not your student, your client, or your case study. They are a person who has suffered, who has survived, who is seeking understanding and relief. Your language, your presence, your structure — all of it serves that one purpose. You are a guide through the underworld, not a showman.
 
-When you reference a book, author, or technique, you always briefly explain its relevance to the current topic and offer a recommendation for further reading if appropriate. You have access to a vast clinical library and you use it judiciously."""
+When you reference a book, author, or technique, you always briefly explain its relevance to the current topic and offer a recommendation for further reading if appropriate. You have access to a vast clinical library and you use it judiciously.
+
+CRITICAL INSTRUCTION: You must always respond in Russian language. All your answers, explanations, and questions must be in Russian, regardless of the language of the user's message. Use correct, rich, clinical Russian. Never switch to English in your responses."""
 
 # ===================== БАЗА ЗНАНИЙ =====================
 KNOWLEDGE_BASE = {
@@ -165,8 +168,7 @@ KNOWLEDGE_BASE = {
 }
 
 # ===================== ОБРАБОТЧИКИ ЗНАНИЙ =====================
-def get_book_recommendation(topic=None):
-    """Возвращает текст с книгами по теме"""
+def get_book_recommendation():
     books = KNOWLEDGE_BASE["books"]
     lines = ["*Рекомендуемая литература по травме и её лечению:*\n"]
     for key, book in books.items():
@@ -176,7 +178,6 @@ def get_book_recommendation(topic=None):
     return "\n".join(lines)
 
 def get_author_info():
-    """Список ключевых авторов"""
     authors = KNOWLEDGE_BASE["authors"]
     lines = ["*Ключевые авторы и их вклад:*\n"]
     for name, desc in authors.items():
@@ -184,7 +185,6 @@ def get_author_info():
     return "\n".join(lines)
 
 def get_techniques_info():
-    """Описание основных техник"""
     techniques = KNOWLEDGE_BASE["techniques"]
     lines = ["*Основные терапевтические подходы при травме:*\n"]
     for name, desc in techniques.items():
@@ -192,7 +192,6 @@ def get_techniques_info():
     return "\n".join(lines)
 
 def get_online_resources():
-    """Ресурсы для самостоятельного изучения"""
     resources = KNOWLEDGE_BASE["online_resources"]
     lines = ["*Полезные онлайн-ресурсы:*\n"]
     for name, url in resources.items():
@@ -200,28 +199,24 @@ def get_online_resources():
     return "\n".join(lines)
 
 def get_topic_info(topic):
-    """Поиск по ключевому слову в базе знаний"""
     topic_lower = topic.lower()
     results = []
-    # Поиск в книгах
     for key, book in KNOWLEDGE_BASE["books"].items():
         if (topic_lower in key.lower() or 
             topic_lower in book["title"].lower() or 
             topic_lower in book["author"].lower() or
             topic_lower in book["summary"].lower()):
-            results.append(f"📖 **{book['title']}** — {book['author']} ({book['year']})")
+            results.append(f"**{book['title']}** — {book['author']} ({book['year']})")
             results.append(f"_{book['summary']}_")
             results.append(f"*Рекомендация:* {book['recommendation']}\n")
-    # Поиск в техниках
     for name, desc in KNOWLEDGE_BASE["techniques"].items():
         if topic_lower in name.lower() or topic_lower in desc.lower():
-            results.append(f"🧠 **{name}** — {desc}")
-    # Поиск в авторах
+            results.append(f"**{name}** — {desc}")
     for name, desc in KNOWLEDGE_BASE["authors"].items():
         if topic_lower in name.lower() or topic_lower in desc.lower():
-            results.append(f"👤 **{name}** — {desc}")
+            results.append(f"**{name}** — {desc}")
     if not results:
-        return f"По вашему запросу '{topic}' ничего не найдено. Попробуйте другую тему или используйте /books, /authors, /techniques, /resources."
+        return f"По вашему запросу '{topic}' ничего не найдено. Попробуйте другую тему или используйте кнопки 'Книги', 'Авторы', 'Техники' или 'Ресурсы'."
     return "\n".join(results)
 
 # ===================== ОСНОВНОЙ КОД =====================
@@ -478,7 +473,6 @@ async def handle_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "Введите ключевое слово для поиска в моей библиотеке (например, 'IFS', 'flashback', 'Porges').",
             reply_markup=MAIN_MENU
         )
-        # Переключаем состояние ожидания поиска
         context.user_data["search_mode"] = True
         return
     elif "SOS" in text:
@@ -497,7 +491,7 @@ async def handle_messages(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_message_buffers.pop(user_id, None)
         user_sessions[user_id] = []
         save_sessions()
-        await update.message.reply_text("🧹 История диалога очищена.", reply_markup=MAIN_MENU)
+        await update.message.reply_text("История диалога очищена.", reply_markup=MAIN_MENU)
         return
 
     # Поиск по теме
