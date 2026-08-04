@@ -9,11 +9,8 @@ import httpx
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, CallbackQueryHandler, ContextTypes, filters
 
-TELEGRAM_TOKEN = "8663472121:AAEET8TxVtXqYrxlTzU2RXPYcfUY3MHg4JA"
-MODELHUB_API_KEY = "sk-proxy-095dd85944642f3a58938dca6e4edf889d170857bd044baf56ffe420711058cf"
-MODEL_NAME = "claude-sonnet-4-6"
-API_URL = "https://modelhub.my/v1/chat/completions"
-SESSIONS_FILE = "sessions.json"
+TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+MODELHUB_API_KEY = os.getenv("MODELHUB_API_KEY")
 
 KARL_SYSTEM_PROMPT = """You are Dr. Karl Wunderlich, M.D., Ph.D., a clinical psychotherapist specializing in Complex PTSD, trauma, and dissociation. 
 
