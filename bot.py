@@ -3,6 +3,8 @@ import asyncio
 import json
 import os
 import io
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 import httpx
 from telegram import Update, ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, CallbackQueryHandler, ContextTypes, filters
@@ -276,6 +278,9 @@ def run_web_server():
     server.serve_forever()
 
 if __name__ == '__main__':
-    # Запускаем веб-сервер в фоновом потоке, чтобы он занимал порт для Render
+    # Запускаем фоновый веб-сервер для удержания порта Render
     web_thread = threading.Thread(target=run_web_server, daemon=True)
-    web_thread.start)
+    web_thread.start()
+    
+    # Запускаем самого телеграм-бота
+    main()
