@@ -12,7 +12,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, Cal
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 MODELHUB_API_KEY = os.getenv("MODELHUB_API_KEY")
 
-API_URL = os.getenv("API_URL", "https://api.modelhub.com/v1")
+API_URL = os.getenv("API_URL", "https://modelhub.my/v1")
 KARL_SYSTEM_PROMPT = """You are Dr. Karl Wunderlich, M.D., Ph.D., a clinical psychotherapist specializing in Complex PTSD, trauma, and dissociation. 
 
 CRITICAL STYLE GUIDELINES:
